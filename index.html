@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Bola Sepak AR</title>
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    #hint {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+      padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+      background: rgba(0, 0, 0, 0.65); color: #fff;
+      font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+      text-align: center; transition: opacity .3s;
+    }
+    #hint.hidden { opacity: 0; pointer-events: none; }
+    #hint a { color: #9fe3a0; }
+  </style>
+</head>
+<body>
+  <div id="hint">
+    Benarkan akses kamera, kemudian hala ke penanda <b>Hiro</b>.<br>
+    <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" target="_blank" rel="noopener">Buka gambar penanda Hiro</a>
+  </div>
+
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; maxDetectionRate: 30;">
+
+    <a-marker preset="hiro" id="marker">
+      <!-- Bola sepak 3D -->
+      <a-entity id="ball" position="0 0.5 0" football>
+        <a-animation attribute="rotation" dur="6000" to="0 360 0" easing="linear" repeat="indefinite"></a-animation>
+      </a-entity>
+    </a-marker>
+
+    <a-light type="ambient" intensity="0.8"></a-light>
+    <a-light type="directional" position="1 3 2" intensity="0.9"></a-light>
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // Bina bola sepak: sfera putih + 12 pentagon hitam
+    AFRAME.registerComponent('football', {
+      init: function () {
+        var R = 0.5;
+        var group = new THREE.Group();
+
+        var sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(R, 48, 32),
+          new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.45, metalness: 0.05 })
+        );
+        group.add(sphere);
+
+        // 12 arah = bucu ikosahedron
+        var p = (1 + Math.sqrt(5)) / 2;
+        var dirs = [];
+        [-1, 1].forEach(function (a) {
+          [-1, 1].forEach(function (b) {
+            dirs.push([0, a, b * p], [a, b * p, 0], [b * p, 0, a]);
+          });
+        });
+
+        var mat = new THREE.MeshStandardMaterial({
+          color: 0x1b1b1b, roughness: 0.5, side: THREE.DoubleSide,
+          polygonOffset: true, polygonOffsetFactor: -2
+        });
+
+        dirs.forEach(function (d) {
+          var v = new THREE.Vector3(d[0], d[1], d[2]).normalize();
+          var patch = new THREE.Mesh(new THREE.CircleGeometry(0.27, 5), mat);
+          patch.position.copy(v).multiplyScalar(R * 1.004);
+          patch.lookAt(v.clone().multiplyScalar(2));
+          group.add(patch);
+        });
+
+        this.el.setObject3D('mesh', group);
+      }
+    });
+
+    // Sembunyi arahan bila penanda dikesan
+    var hint = document.getElementById('hint');
+    var marker = document.getElementById('marker');
+    marker.addEventListener('markerFound', function () { hint.classList.add('hidden'); });
+    marker.addEventListener('markerLost', function () { hint.classList.remove('hidden'); });
+  </script>
+</body>
+</html>
